@@ -1043,11 +1043,9 @@ function fillInvoiceSheetCopy(sheet, offset, store, invoiceNumber) {
 
   const monthText = formatRussianInvoiceMonth(date);
   const orderNumberText = formatStoreOrderNumbers(store);
-  const orderNumberAddress = findSheetCellAddressByText(sheet, offset, 'номер заказ');
   setSheetCell(sheet, `A${titleRow}`, store.name);
+  if (orderNumberText) setSheetCell(sheet, `A${contractRow}`, orderNumberText);
   setSheetCell(sheet, `H${titleRow}`, `СЧЕТ-ФАКТУРА № ${invoiceNo}                         от           ${monthText}г.`);
-  setSheetCell(sheet, `A${contractRow}`, '      к Договору № 15/365 от «28» ноября 2022г.');
-  if (orderNumberText && orderNumberAddress) setSheetCell(sheet, orderNumberAddress, orderNumberText);
 
   setSheetCell(sheet, `A${infoStart}`, 'Поставщик:');
   setSheetCell(sheet, `C${infoStart}`, els.supplierName.value || SUPPLIER_DEFAULTS.name);
@@ -1354,11 +1352,9 @@ function fillInvoiceXmlCopy(documentXml, cellMap, offset, store, invoiceNumber, 
 
   const monthText = formatRussianInvoiceMonth(date);
   const orderNumberText = formatStoreOrderNumbers(store);
-  const orderNumberAddress = findXmlCellAddressByText(cellMap, offset, 'номер заказ', sharedStrings);
   setXmlCell(documentXml, cellMap, `A${titleRow}`, store.name);
+  if (orderNumberText) setXmlCell(documentXml, cellMap, `A${contractRow}`, orderNumberText);
   setXmlCell(documentXml, cellMap, `H${titleRow}`, `СЧЕТ-ФАКТУРА № ${invoiceNo}                         от           ${monthText}г.`);
-  setXmlCell(documentXml, cellMap, `A${contractRow}`, '      к Договору № 15/365 от «28» ноября 2022г.');
-  if (orderNumberText && orderNumberAddress) setXmlCell(documentXml, cellMap, orderNumberAddress, orderNumberText);
 
   setXmlCell(documentXml, cellMap, `A${infoStart}`, 'Поставщик:');
   setXmlCell(documentXml, cellMap, `C${infoStart}`, els.supplierName.value || SUPPLIER_DEFAULTS.name);
