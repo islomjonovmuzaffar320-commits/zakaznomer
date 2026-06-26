@@ -1105,6 +1105,13 @@ function fillInvoiceSheetCopy(sheet, offset, store, invoiceNumber) {
   setSheetCell(sheet, `B${stampRow}`, 'М.П.');
 }
 
+function nextSheetCellAddress(address) {
+  const [, columnText, rowText] = String(address).match(/^([A-Z]+)(\d+)$/) || [];
+  if (!columnText || !rowText) return address;
+  const nextColumn = XLSX.utils.encode_col(XLSX.utils.decode_col(columnText) + 1);
+  return `${nextColumn}${rowText}`;
+}
+
 function setSheetCell(sheet, address, value, formula = '') {
   const existing = sheet[address] || {};
   const nextCell = {};
@@ -1167,7 +1174,7 @@ function findSheetCellAddressByText(sheet, offset, needle) {
     for (let column = range.s.c; column <= range.e.c; column += 1) {
       const address = XLSX.utils.encode_cell({ r: row, c: column });
       const cell = sheet[address];
-      if (cell && normalizeText(cell.v) === normalizedNeedle) return address;
+      if (cell && normalizeText(cell.v).includes(normalizedNeedle)) return address;
     }
   }
   return '';
@@ -1178,7 +1185,7 @@ function findXmlCellAddressByText(cellMap, offset, needle, sharedStrings = []) {
   for (const [address, cell] of cellMap.entries()) {
     const row = Number(String(address).replace(/\D/g, ''));
     if (row < offset + 1 || row > offset + 9) continue;
-    if (normalizeText(getXmlCellText(cell, sharedStrings)) === normalizedNeedle) return address;
+    if (normalizeText(getXmlCellText(cell, sharedStrings)).includes(normalizedNeedle)) return address;
   }
   return '';
 }
@@ -1412,6 +1419,23 @@ function fillInvoiceXmlCopy(documentXml, cellMap, offset, store, invoiceNumber, 
   setXmlCell(documentXml, cellMap, `A${signRow}`, 'Товар отпустил:');
   setXmlCell(documentXml, cellMap, `P${signRow}`, 'Получил:');
   setXmlCell(documentXml, cellMap, `B${stampRow}`, 'М.П.');
+}
+
+function nextXmlCellAddress(address) {
+  const [, columnText, rowText] = String(address).match(/^([A-Z]+)(\d+)$/) || [];
+  if (!columnText || !rowText) return address;
+  return `${indexToColumn(columnToIndex(columnText) + 1)}${rowText}`;
+}
+
+function indexToColumn(index) {
+  let value = Number(index);
+  let column = '';
+  while (value > 0) {
+    const remainder = (value - 1) % 26;
+    column = String.fromCharCode(65 + remainder) + column;
+    value = Math.floor((value - 1) / 26);
+  }
+  return column;
 }
 
 function setXmlCell(documentXml, cellMap, address, value, formula = '') {
