@@ -812,36 +812,46 @@ function buildInvoiceProducts(products) {
     const net = normalizeNumber(product.net || quantity * price);
     const vat = normalizeNumber(product.vat || net * VAT_RATE);
     const gross = normalizeNumber(product.gross || net + vat);
-    const current = productTotals.get(key) || { quantity: 0, net: 0, vat: 0, gross: 0 };
+    const current = productTotals.get(key) || {
+      name: cleanName(product.name),
+      quantity: 0,
+      net: 0,
+      vat: 0,
+      gross: 0,
+      firstRow: Number.POSITIVE_INFINITY,
+    };
     current.quantity = normalizeNumber(current.quantity + quantity);
     current.net = normalizeNumber(current.net + net);
     current.vat = normalizeNumber(current.vat + vat);
     current.gross = normalizeNumber(current.gross + gross);
+    current.firstRow = Math.min(current.firstRow, product.rows?.[0] || product.sourceRow || Number.POSITIVE_INFINITY);
     productTotals.set(key, current);
   });
 
-  return INVOICE_PRODUCTS.map((templateProduct) => {
-    const total = productTotals.get(normalizeProductKey(templateProduct.name));
-    if (!total || !total.quantity) {
-      return {
-        name: templateProduct.name,
-        quantity: 0,
-        price: '',
-        net: 0,
-        vat: 0,
-        gross: 0,
-      };
+  const orderedProducts = [];
+  const usedKeys = new Set();
+  INVOICE_PRODUCTS.forEach((templateProduct) => {
+    const key = normalizeProductKey(templateProduct.name);
+    const total = productTotals.get(key);
+    if (total?.quantity) {
+      orderedProducts.push(total);
+      usedKeys.add(key);
     }
-
-    return {
-      name: templateProduct.name,
-      quantity: total.quantity,
-      price: normalizeNumber(total.net / total.quantity),
-      net: total.net,
-      vat: total.vat,
-      gross: total.gross,
-    };
   });
+
+  Array.from(productTotals.entries())
+    .filter(([key, total]) => !usedKeys.has(key) && total.quantity)
+    .sort(([, a], [, b]) => (a.firstRow - b.firstRow) || a.name.localeCompare(b.name, 'ru'))
+    .forEach(([, total]) => orderedProducts.push(total));
+
+  return orderedProducts.map((total) => ({
+    name: total.name,
+    quantity: total.quantity,
+    price: normalizeNumber(total.net / total.quantity),
+    net: total.net,
+    vat: total.vat,
+    gross: total.gross,
+  }));
 }
 
 function normalizeProductKey(value) {
@@ -1033,12 +1043,9 @@ function fillInvoiceSheetCopy(sheet, offset, store, invoiceNumber) {
 
   const monthText = formatRussianInvoiceMonth(date);
   const orderNumberText = formatStoreOrderNumbers(store);
-  const orderNumberLabelAddress = findSheetCellAddressByText(sheet, offset, 'номер заказ');
-  const orderNumberValueAddress = orderNumberLabelAddress ? nextSheetCellAddress(orderNumberLabelAddress) : `B${contractRow}`;
   setSheetCell(sheet, `A${titleRow}`, store.name);
+  if (orderNumberText) setSheetCell(sheet, `A${contractRow}`, orderNumberText);
   setSheetCell(sheet, `H${titleRow}`, `СЧЕТ-ФАКТУРА № ${invoiceNo}                         от           ${monthText}г.`);
-  setSheetCell(sheet, `A${contractRow}`, '      к Договору № 15/365 от «28» ноября 2022г.');
-  if (orderNumberText) setSheetCell(sheet, orderNumberValueAddress, orderNumberText);
 
   setSheetCell(sheet, `A${infoStart}`, 'Поставщик:');
   setSheetCell(sheet, `C${infoStart}`, els.supplierName.value || SUPPLIER_DEFAULTS.name);
@@ -1352,12 +1359,9 @@ function fillInvoiceXmlCopy(documentXml, cellMap, offset, store, invoiceNumber, 
 
   const monthText = formatRussianInvoiceMonth(date);
   const orderNumberText = formatStoreOrderNumbers(store);
-  const orderNumberLabelAddress = findXmlCellAddressByText(cellMap, offset, 'номер заказ', sharedStrings);
-  const orderNumberValueAddress = orderNumberLabelAddress ? nextXmlCellAddress(orderNumberLabelAddress) : `B${contractRow}`;
   setXmlCell(documentXml, cellMap, `A${titleRow}`, store.name);
+  if (orderNumberText) setXmlCell(documentXml, cellMap, `A${contractRow}`, orderNumberText);
   setXmlCell(documentXml, cellMap, `H${titleRow}`, `СЧЕТ-ФАКТУРА № ${invoiceNo}                         от           ${monthText}г.`);
-  setXmlCell(documentXml, cellMap, `A${contractRow}`, '      к Договору № 15/365 от «28» ноября 2022г.');
-  if (orderNumberText) setXmlCell(documentXml, cellMap, orderNumberValueAddress, orderNumberText);
 
   setXmlCell(documentXml, cellMap, `A${infoStart}`, 'Поставщик:');
   setXmlCell(documentXml, cellMap, `C${infoStart}`, els.supplierName.value || SUPPLIER_DEFAULTS.name);
